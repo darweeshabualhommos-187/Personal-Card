@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Darweesh Abualhommos - Identity Card</title>
+    
+    <style>
+        /* 
+         * ==========================================
+         * DESIGN TOKENS & CSS VARIABLES
+         * Change these to update the whole card's look
+         * ==========================================
+         */
+        :root {
+            /* Dimensions matching a real bank card (ISO/IEC 7810 ID-1) */
+            --card-width: 85.6mm;
+            --card-height: 54mm;
+            --card-radius: 3.18mm; 
+            
+            /* Colors */
+            --color-main: #3a5a78;     /* Metallic Blue */
+            --color-accent: #111e2b;   /* Dark Blue */
+            --color-text-primary: #ffffff;
+            --color-text-secondary: #b3cbe0;
+            --color-border-light: rgba(255, 255, 255, 0.35);
+            --color-shadow: rgba(0, 0, 0, 0.4);
+            
+            /* Page Background */
+            --color-page-bg: #e2e8f0;
+            
+            /* Typography */
+            --font-main: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --font-size-name: 18px;
+            --font-size-role: 11px;
+            --font-size-label: 8px;
+            --font-size-value: 12px;
+            
+            /* Spacing */
+            --spacing-sm: 4px;
+            --spacing-md: 8px;
+            --spacing-lg: 12px;
+            --spacing-xl: 16px;
+        }
+
+        /* 
+         * ==========================================
+         * BASE PAGE STYLES & LAYOUT
+         * ==========================================
+         */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--color-page-bg);
+            font-family: var(--font-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: var(--color-text-primary);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* 
+         * ==========================================
+         * REALISTIC 3D CARD CONTAINER
+         * ==========================================
+         */
+        .card-scene {
+            /* Enables 3D space for the tilt effect */
+            perspective: 1000px;
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .id-card {
+            width: var(--card-width);
+            height: var(--card-height);
+            border-radius: var(--card-radius);
+            
+            /* Realistic lighting, gradient, and light edge */
+            background: linear-gradient(135deg, var(--color-main) 0%, var(--color-accent) 100%);
+            border: 1px solid var(--color-border-light);
+            box-shadow: 
+                0 15px 35px var(--color-shadow),
+                inset 0 1px 1px rgba(255, 255, 255, 0.5);
+                
+            position: relative;
+            overflow: hidden;
+            transform-style: preserve-3d;
+            transition: transform 0.15s ease-out;
+            
+            /* Layout inside the card */
+            display: flex;
+            padding: var(--spacing-md) var(--spacing-lg);
+        }
+
+        /* Faint sheen of light across the surface */
+        .id-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(
+                to right,
+                rgba(255,255,255,0) 0%,
+                rgba(255,255,255,0.15) 50%,
+                rgba(255,255,255,0) 100%
+            );
+            transform: skewX(-20deg);
+            pointer-events: none;
+            /* Static sheen fallback, enhanced by JS later if desired */
+        }
+
+        /* 
+         * ==========================================
+         * CARD INTERNAL LAYOUT: LEFT & RIGHT COLS
+         * ==========================================
+         */
+        .card-left {
+            flex: 0 0 38%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding-right: var(--spacing-sm);
+            border-right: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .card-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding-left: var(--spacing-md);
+            padding-top: var(--spacing-sm);
+            padding-bottom: var(--spacing-sm);
+        }
+
+        /* 
+         * ==========================================
+         * LEFT SIDE: AVATAR & NAME
+         * ==========================================
+         */
+        .avatar-wrapper {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px; /* Rounded square */
+            overflow: hidden;
+            margin-bottom: var(--spacing-md);
+            border: 1px solid var(--color-border-light);
+            background-color: var(--color-accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .avatar-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Initials fallback shown if image fails to load */
+        .avatar-fallback {
+            display: none; /* Hidden by default, activated via JS onerror */
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--color-text-primary);
+            letter-spacing: 1px;
+        }
+
+        .full-name {
+            font-size: var(--font-size-name);
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: var(--spacing-sm);
+            letter-spacing: -0.5px;
+        }
+
+        .role-title {
+            font-size: var(--font-size-role);
+            font-weight: 500;
+            color: var(--color-text-secondary);
+            margin-bottom: 2px;
+        }
+
+        .organisation {
+            font-size: var(--font-size-role);
+            font-weight: 400;
+            color: var(--color-text-secondary);
+            opacity: 0.9;
+        }
+
+        /* 
+         * ==========================================
+         * RIGHT SIDE: CONTACT INFO & SOCIALS
+         * ==========================================
+         */
+        .contact-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .contact-label {
+            font-size: var(--font-size-label);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--color-text-secondary);
+            margin-bottom: 2px;
+        }
+
+        /* Large touch targets (44px min) using min-height & flex */
+        .contact-value {
+            font-size: var(--font-size-value);
+            font-weight: 500;
+            color: var(--color-text-primary);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            min-height: 36px; /* slightly smaller visually, but tap target expanded below */
+            position: relative;
+        }
+        
+        /* Pseudo-element to guarantee 44px tap target without breaking tiny layout */
+        .contact-value::after {
+            content: '';
+            position: absolute;
+            top: -5px;
+            bottom: -5px;
+            left: -5px;
+            right: -5px;
+        }
+
+        .contact-value[href]:hover {
+            text-decoration: underline;
+        }
+
+        .location-value {
+            font-size: var(--font-size-value);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            min-height: 24px;
+        }
+
+        /* 
+         * ==========================================
+         * SOCIAL MEDIA ICONS
+         * ==========================================
+         */
+        .social-row {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            margin-top: auto;
+            min-height: 44px; /* Ensure row itself provides tap area */
+        }
+
+        .social-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 44px; /* 44px tap target vertical */
+            color: var(--color-text-primary);
+            text-decoration: none;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        
+        .social-icon svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        .social-icon[href]:hover {
+            transform: translateY(-2px);
+            opacity: 1;
+        }
+
+        /* Greyed out state for missing addresses */
+        .social-icon.disabled {
+            opacity: 0.25;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        /* 
+         * ==========================================
+         * FOCUS & ACCESSIBILITY
+         * ==========================================
+         */
+        :focus-visible {
+            outline: 2px solid var(--color-text-primary);
+            outline-offset: 3px;
+            border-radius: 2px;
+        }
+
+        /* 
+         * ==========================================
+         * PRINT BUTTON
+         * ==========================================
+         */
+        .print-button {
+            background-color: var(--color-main);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: background-color 0.2s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 44px; /* Tap target */
+        }
+
+        .print-button:hover {
+            background-color: var(--color-accent);
+        }
+
+        .print-button:active {
+            transform: scale(0.97);
+        }
+
+        /* 
+         * ==========================================
+         * PRINT STYLES (EXACT SIZING, NO CRUFT)
+         * ==========================================
+         */
+        @media print {
+            /* Hide everything by default */
+            body * {
+                visibility: hidden;
+            }
+            
+            /* Reset body background */
+            body {
+                background: none;
+                margin: 0;
+                padding: 0;
+                align-items: flex-start;
+                justify-content: flex-start;
+            }
+
+            /* Only show the card and its contents */
+            .card-scene, .card-scene * {
+                visibility: visible;
+            }
+
+            .card-scene {
+                position: absolute;
+                left: 0;
+                top: 0;
+                margin: 0;
+                perspective: none; /* Disable 3D for print */
+            }
+
+            .id-card {
+                /* Force exact dimensions */
+                width: 85.6mm !important;
+                height: 54mm !important;
+                margin: 0;
+                
+                /* Keep background colors exactly as designed */
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                
+                /* Remove screen-only shadow & 3d transforms */
+                box-shadow: none;
+                transform: none !important;
+            }
+            
+            /* Remove the sheen in print so it looks clean */
+            .id-card::after {
+                display: none;
+            }
+
+            /* Ensure greyed out items stay greyed out */
+            .social-icon.disabled {
+                opacity: 0.3 !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Card Scene wrapper for 3D perspective -->
+    <div class="card-scene" id="cardScene">
+        
+        <!-- The actual ID Card -->
+        <div class="id-card" id="idCard">
+            
+            <!-- LEFT COLUMN: Picture, Name, Title -->
+            <div class="card-left">
+                <div class="avatar-wrapper">
+                    <!-- Image with fallback logic. If link is missing/broken, it hides itself and shows initials -->
+                    <img 
+                        src="https://raw.githubusercontent.com/darweeshabualhommos-187/Personal-Card/218eecb0f864b9bda428694f113aeaa5a98f0146/Untitled.png" 
+                        alt="Darweesh Abualhommos" 
+                        class="avatar-img"
+                        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                    >
+                    <div class="avatar-fallback" aria-hidden="true">DA</div>
+                </div>
+                <h1 class="full-name">Darweesh<br>Abualhommos</h1>
+                <p class="role-title">English Instructor</p>
+                <p class="organisation">Alkifah Academy</p>
+            </div>
+
+            <!-- RIGHT COLUMN: Contact info and Socials -->
+            <div class="card-right">
+                
+                <!-- Phone / WhatsApp -->
+                <div class="contact-group">
+                    <span class="contact-label">Phone & WhatsApp</span>
+                    <!-- Links to WhatsApp via wa.me api -->
+                    <a href="https://wa.me/966570605803" class="contact-value" target="_blank" rel="noopener noreferrer" aria-label="Message on WhatsApp">
+                        +966 57 060 5803
+                    </a>
+                </div>
+                
+                <!-- Email -->
+                <div class="contact-group">
+                    <span class="contact-label">Email</span>
+                    <!-- Links to default mail client -->
+                    <a href="mailto:dar19994@hotmail.com" class="contact-value" aria-label="Send Email">
+                        dar19994@hotmail.com
+                    </a>
+                </div>
+
+                <!-- Location -->
+                <div class="contact-group">
+                    <span class="contact-label">Location</span>
+                    <span class="location-value">Al-Ahsaa, Saudi Arabia</span>
+                </div>
+
+                <!-- Social Media Icons (Inline SVG) -->
+                <div class="social-row">
+                    
+                    <!-- LinkedIn (Provided URL) -->
+                    <a href="https://www.linkedin.com/in/darweesh-abualhommos-46b756161" class="social-icon" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                        </svg>
+                    </a>
+
+                    <!-- Instagram (Missing URL - Greyed Out) -->
+                    <span class="social-icon disabled" aria-label="Instagram (Not provided)" title="Instagram not provided">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+                        </svg>
+                    </span>
+
+                    <!-- Facebook (Missing URL - Greyed Out) -->
+                    <span class="social-icon disabled" aria-label="Facebook (Not provided)" title="Facebook not provided">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M22.675 0h-21.35c-.732 0-1.325.593-1.325 1.325v21.351c0 .731.593 1.324 1.325 1.324h11.495v-9.294h-3.128v-3.622h3.128v-2.671c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.795.143v3.24l-1.918.001c-1.504 0-1.795.715-1.795 1.763v2.313h3.587l-.467 3.622h-3.12v9.293h6.116c.73 0 1.323-.593 1.323-1.325v-21.35c0-.732-.593-1.325-1.325-1.325z"/>
+                        </svg>
+                    </span>
+
+                    <!-- TikTok (Missing URL - Greyed Out) -->
+                    <span class="social-icon disabled" aria-label="TikTok (Not provided)" title="TikTok not provided">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 2.78-1.15 5.54-3.33 7.31-1.92 1.57-4.58 2.22-6.97 1.63-2.6-.64-4.83-2.62-5.71-5.18-.84-2.45-.48-5.34 1.09-7.48 1.48-2.01 3.92-3.23 6.37-3.33v4.18c-1.3.06-2.58.74-3.32 1.81-.69 1-1.02 2.3-.65 3.48.33 1.07 1.25 1.96 2.35 2.28 1.35.39 2.92.08 3.93-.91.93-.9 1.29-2.22 1.28-3.51.02-6.55 0-13.1-.03-19.65h4.19z"/>
+                        </svg>
+                    </span>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print action button (hidden during actual printing) -->
+    <button class="print-button" onclick="window.print()" aria-label="Print Identity Card">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+        </svg>
+        Print Card
+    </button>
+
+    <script>
+        /**
+         * ==========================================
+         * 3D TILT EFFECT LOGIC
+         * ==========================================
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            const cardScene = document.getElementById('cardScene');
+            const idCard = document.getElementById('idCard');
+            
+            // Respect the user's OS preference for reduced motion for accessibility
+            const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+            cardScene.addEventListener('mousemove', (e) => {
+                // Do nothing if user requested reduced motion
+                if (prefersReducedMotion.matches) return;
+                
+                const rect = cardScene.getBoundingClientRect();
+                
+                // Get mouse position relative to the container
+                const x = e.clientX - rect.left; 
+                const y = e.clientY - rect.top;
+                
+                // Find the center of the card
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                
+                // Calculate rotation (restricted to a very slight +/- 8 degrees)
+                // We divide by center values to get a percentage (-1 to 1) and multiply by max degrees
+                const rotateX = ((y - centerY) / centerY) * -8;
+                const rotateY = ((x - centerX) / centerX) * 8;
+                
+                // Apply rotation transform
+                idCard.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+            });
+
+            // Smoothly settle the card back to normal when the mouse leaves
+            cardScene.addEventListener('mouseleave', () => {
+                if (prefersReducedMotion.matches) return;
+                idCard.style.transform = `rotateX(0deg) rotateY(0deg)`;
+            });
+        });
+    </script>
+</body>
+</html>
